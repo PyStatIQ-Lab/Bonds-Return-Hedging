@@ -1,4 +1,5 @@
 import streamlit as st
+import math
 
 # Constants
 USDINR_RATE = 85
@@ -19,13 +20,14 @@ total_return_inr = investment_inr + interest_earned
 # USD Conversion
 investment_usd = investment_inr / USDINR_RATE
 
-# Number of lots needed (ceiling to cover full investment)
-import math
+# Hedging Calculations
 num_lots = math.ceil(investment_usd / USDINR_LOT_SIZE)
 total_margin_inr = num_lots * MARGIN_PER_LOT
-
-# Return after hedging
 actual_return_with_hedging = total_return_inr - total_margin_inr
+
+# Return Percentages
+return_pct_without_hedging = ((total_return_inr - investment_inr) / investment_inr) * 100
+return_pct_with_hedging = ((actual_return_with_hedging - investment_inr) / investment_inr) * 100
 
 # Display Results
 st.subheader("Investment Summary")
@@ -35,17 +37,18 @@ st.write(f"**Yield:** {yield_percent:.2f}%")
 st.write(f"**Interest Earned:** ₹{interest_earned:,.2f}")
 st.write(f"**Total Return (INR):** ₹{total_return_inr:,.2f}")
 
-st.subheader("USD Conversion")
+st.subheader("USD Conversion & Hedging Info")
 st.write(f"**Converted USD Investment:** ${investment_usd:,.2f}")
 st.write(f"**USDINR Hedge Lots Required:** {num_lots}")
 st.write(f"**Margin Required (INR):** ₹{total_margin_inr:,.2f}")
 
 st.subheader("Final Return")
-st.write(f"**Return After Hedging (INR):** ₹{actual_return_with_hedging:,.2f}")
 st.write(f"**Return Without Hedging (INR):** ₹{total_return_inr:,.2f}")
+st.write(f"**Return With Hedging (INR):** ₹{actual_return_with_hedging:,.2f}")
+st.write(f"**Return Without Hedging (%):** {return_pct_without_hedging:.2f}%")
+st.write(f"**Return With Hedging (%):** {return_pct_with_hedging:.2f}%")
 
-# Comparison
 st.markdown("---")
-st.metric(label="Total Return Without Hedging", value=f"₹{total_return_inr:,.2f}")
-st.metric(label="Total Return With Hedging", value=f"₹{actual_return_with_hedging:,.2f}")
+st.metric(label="Total Return Without Hedging", value=f"₹{total_return_inr:,.2f}", delta=f"{return_pct_without_hedging:.2f}%")
+st.metric(label="Total Return With Hedging", value=f"₹{actual_return_with_hedging:,.2f}", delta=f"{return_pct_with_hedging:.2f}%")
 st.metric(label="Total Margin Deducted", value=f"₹{total_margin_inr:,.2f}")
