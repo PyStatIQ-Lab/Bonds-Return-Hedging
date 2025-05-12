@@ -211,40 +211,43 @@ df_scenarios = pd.DataFrame({
 
 # Practical Example Section
 st.markdown("---")
-st.header("💡 Practical Example: ₹85,000 / $1,000 Investment")
+st.header("💡 Practical Example")
+
+# Calculate example based on user's input investment amount
+example_investment_inr = investment_inr
+example_investment_usd = example_investment_inr / usdinr_rate
+example_yield = yield_percent  # Use the user's input yield
+example_tenure = tenure_years  # Use the user's input tenure
 
 with st.expander("Click to view detailed example calculations", expanded=True):
-    st.markdown("""
+    st.markdown(f"""
     **Scenario Parameters:**
-    - Initial investment: ₹85,000 or $1,000 (at 85 USD/INR rate)
-    - Annual bond yield: 10%
-    - Investment period: 1 year
+    - Initial investment: ₹{example_investment_inr:,.2f} or ${example_investment_usd:,.2f} (at {usdinr_rate:.2f} USD/INR rate)
+    - Annual bond yield: {example_yield:.2f}%
+    - Investment period: {example_tenure} year{'s' if example_tenure > 1 else ''}
     """)
     
     # Calculate example returns
-    example_investment_inr = 85000
-    example_investment_usd = 1000
-    example_yield = 10
-    example_interest_inr = example_investment_inr * (example_yield/100)
-    example_interest_usd = example_investment_usd * (example_yield/100)
+    example_interest_inr = example_investment_inr * (example_yield/100) * example_tenure
+    example_interest_usd = example_investment_usd * (example_yield/100) * example_tenure
     example_total_inr = example_investment_inr + example_interest_inr
     example_total_usd = example_investment_usd + example_interest_usd
     
     st.markdown(f"""
-    **After 1 Year (No Currency Change at 85 USD/INR):**
+    **After {example_tenure} Year{'s' if example_tenure > 1 else ''} (No Currency Change at {usdinr_rate:.2f} USD/INR):**
     - Interest earned: ₹{example_interest_inr:,.2f} or ${example_interest_usd:,.2f}
     - Total return: ₹{example_total_inr:,.2f} or ${example_total_usd:,.2f}
     """)
     
-    # Conversion scenarios
+    # Conversion scenarios (+/- 10% from current rate)
     st.subheader("Currency Risk Without Hedging:")
-    rate_changes = [75, 85, 95]
+    rate_changes = [usdinr_rate*0.9, usdinr_rate, usdinr_rate*1.1]  # -10%, same, +10%
     example_data = []
     
     for rate in rate_changes:
         # Convert USD principal + interest back to INR at new rate
         inr_converted = example_total_usd * rate
-        usd_value = example_total_usd * (85/rate)  # Adjusted USD value
+        usd_value = example_total_usd * (usdinr_rate/rate)  # Adjusted USD value
         
         # Calculate gain/loss vs original INR investment
         inr_diff = inr_converted - example_total_inr
@@ -252,15 +255,15 @@ with st.expander("Click to view detailed example calculations", expanded=True):
         effective_yield = (inr_converted - example_investment_inr)/example_investment_inr*100
         
         example_data.append({
-            'Scenario': 'INR Appreciates' if rate < 85 else 'INR Depreciates' if rate > 85 else 'No Change',
-            'USD/INR Rate': rate,
+            'Scenario': 'INR Appreciates' if rate < usdinr_rate else 'INR Depreciates' if rate > usdinr_rate else 'No Change',
+            'USD/INR Rate': f"{rate:.2f}",
             'USD Value': f"${usd_value:,.2f}",
             'Converted to INR': f"₹{inr_converted:,.2f}",
             'Gain/Loss vs Original': f"₹{inr_diff:,.1f} ({pct_diff:.1f}%)",
             'Effective Yield': f"{effective_yield:.1f}%"
         })
     
-    # Display as table - FIXED VERSION
+    # Display as table with highlighting
     def highlight_row(row):
         if row['Scenario'] in ['INR Appreciates', 'INR Depreciates']:
             return ['background-color: #fffacd'] * len(row)
@@ -272,24 +275,28 @@ with st.expander("Click to view detailed example calculations", expanded=True):
     # Hedging solution
     st.subheader("🛡️ Hedging Solution with USD/INR Futures")
     
-    st.markdown("""
+    # Calculate hedging parameters
+    num_lots_example = math.ceil(example_total_usd / USDINR_LOT_SIZE)
+    total_margin_example = num_lots_example * margin_per_lot
+    
+    st.markdown(f"""
     **To protect against currency risk:**
     1. **Sell USD/INR futures** to lock in current exchange rate
-    2. Number of lots: 1 (for $1,000 investment)
-    3. Margin required: ₹2,150
+    2. Number of lots: {num_lots_example} (for ${example_total_usd:,.2f} exposure)
+    3. Margin required: ₹{total_margin_example:,.2f}
     """)
     
     hedge_data = []
     for rate in rate_changes:
         # Calculate spot loss/gain
-        spot_change = (rate - 85)/85 * 100
-        spot_result = example_total_usd * (rate - 85)
+        spot_change = (rate - usdinr_rate)/usdinr_rate * 100
+        spot_result = example_total_usd * (rate - usdinr_rate)
         
         # Futures position would be opposite
         futures_result = -spot_result
         
         hedge_data.append({
-            'USD/INR Rate': rate,
+            'USD/INR Rate': f"{rate:.2f}",
             'Spot Change': f"{spot_change:.1f}%",
             'Spot P&L': f"₹{spot_result:,.0f}",
             'Futures P&L': f"₹{futures_result:,.0f}",
@@ -300,8 +307,8 @@ with st.expander("Click to view detailed example calculations", expanded=True):
     df_hedge = pd.DataFrame(hedge_data)
     st.table(df_hedge)
     
-    st.markdown("""
-    **Result:** By hedging, the investor locks in the ₹93,500 return regardless of currency movements.
+    st.markdown(f"""
+    **Result:** By hedging, the investor locks in the ₹{example_total_inr:,.2f} return regardless of currency movements.
     """)
 
 # Display Results
