@@ -83,7 +83,7 @@ st.markdown("""
         width: 100%;
     }
     .highlight-row {
-        background-color: #fffacd;
+        background-color: #000;
     }
 </style>
 """, unsafe_allow_html=True)
