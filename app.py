@@ -260,9 +260,14 @@ with st.expander("Click to view detailed example calculations", expanded=True):
             'Effective Yield': f"{effective_yield:.1f}%"
         })
     
-    # Display as table
+    # Display as table - FIXED VERSION
+    def highlight_row(row):
+        if row['Scenario'] in ['INR Appreciates', 'INR Depreciates']:
+            return ['background-color: #fffacd'] * len(row)
+        return [''] * len(row)
+    
     df_example = pd.DataFrame(example_data)
-    st.table(df_example.style.apply(lambda x: ['background: #fffacd' if x['Scenario'] in ['INR Appreciates', 'INR Depreciates'] else '' for i, x in df_example.iterrows()], axis=1))
+    st.table(df_example.style.apply(highlight_row, axis=1))
     
     # Hedging solution
     st.subheader("🛡️ Hedging Solution with USD/INR Futures")
