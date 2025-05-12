@@ -6,7 +6,7 @@ import pandas as pd
 
 # Constants
 USDINR_LOT_SIZE = 1000  # One lot = $1000
-DEFAULT_USDINR_RATE = 85
+DEFAULT_USDINR_RATE = 85.0  # Changed to float
 DEFAULT_MARGIN_PER_LOT = 2150  # INR per lot
 DEFAULT_HEDGING_COST_PCT = 0.5  # Annual hedging cost as % of notional
 
@@ -124,10 +124,11 @@ with col2:
         st.header("🛡️ Hedging Parameters")
         usdinr_rate = st.number_input(
             "**Current USD/INR Rate**", 
-            min_value=70.0, 
-            max_value=100.0, 
+            min_value=70.0,  # Changed to float
+            max_value=100.0,  # Changed to float
             step=0.1, 
-            value=DEFAULT_USDINR_RATE
+            value=DEFAULT_USDINR_RATE,
+            format="%.2f"  # Added format to ensure consistent decimal places
         )
         st.markdown(f"**USDINR Lot Size:** ${USDINR_LOT_SIZE}")
         margin_per_lot = st.number_input(
@@ -340,7 +341,7 @@ with tab2:
     st.subheader("USD Conversion Details")
     st.markdown(f"""
     - **Converted USD Amount:** ${investment_usd:,.2f}
-    - **USD/INR Exchange Rate:** {usdinr_rate}
+    - **USD/INR Exchange Rate:** {usdinr_rate:.2f}
     """)
     
     st.subheader("Hedging Details")
