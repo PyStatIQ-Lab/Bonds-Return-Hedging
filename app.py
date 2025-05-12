@@ -170,7 +170,7 @@ stress_return = (investment_usd * USDINR_RATE * (1 + historical_max_drop/100)) +
 var_95 = investment_inr * (return_pct_without_hedging/100 - 1.96*HISTORICAL_VOLATILITY/100)
 
 st.markdown(f"""
-- **Value at Risk (95% confidence):** ₹{max(0, var_investment):,.2f}
+- **Value at Risk (95% confidence):** ₹{max(0, var_95):,.2f}
 - **Stress Scenario Return (2008-like):** ₹{stress_return:,.2f} ({(stress_return/investment_inr-1)*100:.2f}%)
 - **Sharpe Ratio (vs risk-free):** {(return_pct_with_hedging/100 - 0.065)/ (HISTORICAL_VOLATILITY/100):.2f}
 """)
