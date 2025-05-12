@@ -61,7 +61,7 @@ st.markdown("""
         border-left: 5px solid #3498db;
     }
     .hedging-details {
-        background-color: #fffaf0;
+        background-color: #384e61;
         border-radius: 10px;
         padding: 15px;
         margin: 15px 0;
