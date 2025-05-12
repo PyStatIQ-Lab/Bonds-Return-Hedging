@@ -27,7 +27,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
     .metric-box {
-        background-color: white;
+        background-color: blue;
         border-radius: 10px;
         padding: 20px;
         margin: 10px 0;
