@@ -21,7 +21,7 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main {
-        background-color: #f8f9fa;
+        background-color: #61778c;
     }
     .stNumberInput, .stSelectbox, .stSlider {
         margin-bottom: 10px;
