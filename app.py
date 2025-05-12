@@ -54,7 +54,7 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     .example-box {
-        background-color: #f0f8ff;
+        background-color: #384e61;
         border-radius: 10px;
         padding: 15px;
         margin: 15px 0;
