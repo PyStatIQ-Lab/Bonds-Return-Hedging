@@ -97,6 +97,10 @@ usd_equivalent, full_lots, margin_required, hedging_cost, unhedged_amount = calc
 return_without_hedging = total_return
 return_with_hedging = total_return - hedging_cost
 
+# Calculate annualized returns
+annualized_without = ((return_without_hedging / principal) ** (1/tenure) - 1) * 100
+annualized_with = ((return_with_hedging / principal) ** (1/tenure) - 1) * 100
+
 # Dashboard layout
 col1, col2 = st.columns(2)
 
@@ -193,7 +197,7 @@ with col5:
               f"-{(difference/principal)*100:.2f}%")
 
 # Detailed comparison table
-st.markdown("""
+st.markdown(f"""
 <table class="comparison-table">
     <tr>
         <th>Metric</th>
@@ -203,38 +207,28 @@ st.markdown("""
     </tr>
     <tr>
         <td>Final Value (INR)</td>
-        <td>₹{:,.2f}</td>
-        <td>₹{:,.2f}</td>
-        <td>₹{:,.2f}</td>
+        <td>₹{return_without_hedging:,.2f}</td>
+        <td>₹{return_with_hedging:,.2f}</td>
+        <td>₹{(return_without_hedging - return_with_hedging):,.2f}</td>
     </tr>
     <tr>
         <td>Total Return</td>
-        <td>{:.2f}%</td>
-        <td>{:.2f}%</td>
-        <td>{:.2f}%</td>
+        <td>{(return_without_hedging/principal - 1)*100:.2f}%</td>
+        <td>{(return_with_hedging/principal - 1)*100:.2f}%</td>
+        <td>{((return_without_hedging - return_with_hedging)/principal)*100:.2f}%</td>
     </tr>
     <tr>
         <td>Annualized Return</td>
-        <td>{:.2f}%</td>
-        <td>{:.2f}%</td>
-        <td>{:.2f}%</td>
+        <td>{annualized_without:.2f}%</td>
+        <td>{annualized_with:.2f}%</td>
+        <td>{(annualized_without - annualized_with):.2f}%</td>
     </tr>
 </table>
-""".format(
-    return_without_hedging,
-    return_with_hedging,
-    return_without_hedging - return_with_hedging,
-    (return_without_hedging/principal - 1)*100,
-    (return_with_hedging/principal - 1)*100,
-    ((return_without_hedging - return_with_hedging)/principal)*100,
-    ((return_without_hedging/principal)**(1/tenure)-1)*100,
-    ((return_with_hedging/principal)**(1/tenure)-1)*100,
-    (((return_without_hedging/principal)**(1/tenure)-1)*100 - ((return_with_hedging/principal)**(1/tenure)-1)*100
-), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Explanation
 with st.expander("Understanding the Results"):
-    st.write("""
+    st.write(f"""
     **Key Concepts:**
     
     1. **Without Hedging:**
@@ -248,9 +242,9 @@ with st.expander("Understanding the Results"):
        - Protects you if INR appreciates, but costs money if INR depreciates
     
     3. **Hedging Cost Components:**
-       - Margin requirement (₹{:,} upfront)
-       - Margin interest cost (₹{:,} over {} years at {}%)
-    """.format(margin_required, hedging_cost, tenure, margin_interest_rate))
+       - Margin requirement (₹{margin_required:,.0f} upfront)
+       - Margin interest cost (₹{hedging_cost:,.0f} over {tenure} years at {margin_interest_rate}%)
+    """)
     
     st.write("""
     **When to Hedge:**
