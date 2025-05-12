@@ -77,7 +77,7 @@ st.markdown("""
         border-bottom: 1px solid #ddd;
     }
     th {
-        background-color: #f1f1f1;
+        background-color: #384e61;
     }
     .dataframe {
         width: 100%;
