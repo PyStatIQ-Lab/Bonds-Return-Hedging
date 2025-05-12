@@ -27,7 +27,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
     .metric-box {
-        background-color: blue;
+        background-color: white;
         border-radius: 10px;
         padding: 20px;
         margin: 10px 0;
@@ -83,7 +83,7 @@ st.markdown("""
         width: 100%;
     }
     .highlight-row {
-        background-color: #000000;
+        background-color: #384e61;
     }
 </style>
 """, unsafe_allow_html=True)
