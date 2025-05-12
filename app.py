@@ -53,12 +53,31 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
+    .example-box {
+        background-color: #f0f8ff;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+        border-left: 5px solid #3498db;
+    }
+    .example-header {
+        color: #2c3e50;
+        font-weight: bold;
+    }
     table {
         width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
     }
     th {
-        text-align: left;
         background-color: #f1f1f1;
+    }
+    .dataframe {
+        width: 100%;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -182,6 +201,74 @@ df_scenarios = pd.DataFrame({
     'Hedged_Return_USD': [d['hedged_usd'] for d in scenario_data],
     'FX_Rate': [d['rate'] for d in scenario_data]
 })
+
+# Practical Example Section
+st.markdown("---")
+st.header("💡 Practical Example: ₹85,000 / $1,000 Investment")
+
+with st.expander("Click to view detailed example calculations", expanded=True):
+    st.markdown("""
+    **Scenario Parameters:**
+    - Initial investment: ₹85,000 or $1,000 (at 85 USD/INR rate)
+    - Annual bond yield: 10%
+    - Investment period: 1 year
+    - No hedging applied
+    """)
+    
+    # Calculate example returns
+    example_investment_inr = 85000
+    example_investment_usd = 1000
+    example_yield = 10
+    example_interest_inr = example_investment_inr * (example_yield/100)
+    example_interest_usd = example_investment_usd * (example_yield/100)
+    example_total_inr = example_investment_inr + example_interest_inr
+    example_total_usd = example_investment_usd + example_interest_usd
+    
+    st.markdown(f"""
+    **After 1 Year (No Currency Change at 85 USD/INR):**
+    - Interest earned: ₹{example_interest_inr:,.2f} or ${example_interest_usd:,.2f}
+    - Total return: ₹{example_total_inr:,.2f} or ${example_total_usd:,.2f}
+    """)
+    
+    # Conversion scenarios
+    st.subheader("With USD/INR Rate Changes:")
+    rate_changes = [75, 85, 95]
+    example_data = []
+    
+    for rate in rate_changes:
+        # Convert USD principal + interest back to INR at new rate
+        inr_converted = example_total_usd * rate
+        
+        # Calculate gain/loss vs original INR investment
+        inr_diff = inr_converted - example_total_inr
+        pct_diff = (inr_diff / example_total_inr) * 100
+        effective_yield = (inr_converted - example_investment_inr)/example_investment_inr*100
+        
+        example_data.append({
+            'Scenario': 'INR Appreciates' if rate < 85 else 'INR Depreciates' if rate > 85 else 'No Change',
+            'USD/INR Rate': rate,
+            'USD Return': f"${example_total_usd:,.2f}",
+            'Converted to INR': f"₹{inr_converted:,.2f}",
+            'Gain/Loss vs Original': f"₹{inr_diff:,.1f} ({pct_diff:.1f}%)",
+            'Effective Yield': f"{effective_yield:.1f}%"
+        })
+    
+    # Display as table
+    df_example = pd.DataFrame(example_data)
+    st.table(df_example.style.set_properties(**{'text-align': 'left'}))
+    
+    st.markdown("""
+    **Key Observations:**
+    - **At 75 USD/INR (INR appreciates 11.8%):**
+      - Your $1,100 converts to only ₹82,500
+      - Effective yield drops to -2.9% (loss in INR terms)
+    - **At 85 USD/INR (no change):**
+      - Your $1,100 converts to ₹93,500
+      - You get the promised 10% return
+    - **At 95 USD/INR (INR depreciates 11.8%):**
+      - Your $1,100 converts to ₹104,500
+      - Effective yield jumps to 22.9%
+    """)
 
 # Display Results
 st.markdown("---")
@@ -315,13 +402,33 @@ with tab3:
         use_container_width=True
     )
     
+    # Specific Rate Examples
+    st.subheader("Specific Rate Examples")
+    specific_rates = [75, 85, 95]
+    specific_data = []
+    
+    for rate in specific_rates:
+        scenario_pct = ((rate - usdinr_rate)/usdinr_rate)*100
+        scenario = calculate_scenario(-scenario_pct)  # Negative because our function expects appreciation %
+        
+        specific_data.append({
+            'USD/INR Rate': rate,
+            'INR Change': f"{scenario_pct:.1f}%",
+            'Unhedged (INR)': f"₹{scenario['unhedged_inr']:,.2f}",
+            'Hedged (INR)': f"₹{scenario['hedged_inr']:,.2f}",
+            'Unhedged (USD)': f"${scenario['unhedged_usd']:,.2f}",
+            'Hedged (USD)': f"${scenario['hedged_usd']:,.2f}",
+            'Hedging Benefit': f"₹{scenario['hedged_inr'] - scenario['unhedged_inr']:,.2f}"
+        })
+    
+    df_specific = pd.DataFrame(specific_data)
+    st.table(df_specific)
+    
     st.markdown("""
-    **USD Return Analysis:**
-    - When converting back to USD, the hedged strategy shows different outcomes based on exchange rate movement
-    - If INR appreciates (positive % change), USD returns are higher for both strategies
-    - If INR depreciates (negative % change), USD returns are lower
-    - Hedging provides predictable INR returns but variable USD returns
-    - Unhedged strategy has variable returns in both currencies
+    **At Specific Exchange Rates:**
+    - **75 USD/INR:** INR appreciates 11.8% from 85
+    - **85 USD/INR:** No change from initial rate
+    - **95 USD/INR:** INR depreciates 11.8% from 85
     """)
 
 with tab4:
