@@ -24,23 +24,6 @@ st.markdown("""
     .header {
         color: #2c3e50;
     }
-    .comparison-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 15px 0;
-    }
-    .comparison-table th, .comparison-table td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-    }
-    .comparison-table tr:nth-child(even) {
-        background-color: #f2f2f2;
-    }
-    .comparison-table th {
-        background-color: #3498db;
-        color: white;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -60,7 +43,6 @@ with st.sidebar:
     usdinr_rate = st.number_input("Current USD/INR Rate", min_value=1.0, value=85.0, step=0.1)
     hedge_percentage = st.slider("Hedge Percentage (%)", 0, 100, 100)
     margin_per_lot = st.number_input("Margin per Lot (INR)", min_value=1000, value=2150, step=50)
-    margin_interest_rate = st.number_input("Annual Margin Interest Rate (%)", min_value=0.0, value=8.0, step=0.1)
 
 # Calculations
 def calculate_bond_returns(principal, tenure, yield_rate):
@@ -68,38 +50,18 @@ def calculate_bond_returns(principal, tenure, yield_rate):
     interest_earned = total_return - principal
     return total_return, interest_earned
 
-def calculate_hedging(principal, usdinr_rate, margin_per_lot, hedge_percentage, tenure, margin_interest_rate):
-    # USD conversion
+def calculate_hedging(principal, usdinr_rate, margin_per_lot, hedge_percentage):
     usd_equivalent = (principal / usdinr_rate) * (hedge_percentage/100)
-    
-    # Hedging calculations
     lots_needed = usd_equivalent / 1000  # Each lot = USD 1000
     full_lots = int(lots_needed)
-    total_margin = full_lots * margin_per_lot
-    
-    # Calculate margin interest cost (simple interest)
-    margin_interest_cost = total_margin * (margin_interest_rate/100) * tenure
-    
-    # Total hedging cost
-    total_hedging_cost = margin_interest_cost
-    
+    margin_required = full_lots * margin_per_lot
     unhedged_amount = (principal / usdinr_rate) - (full_lots * 1000)
-    
-    return usd_equivalent, full_lots, total_margin, total_hedging_cost, unhedged_amount
+    return usd_equivalent, full_lots, margin_required, unhedged_amount
 
-# Main calculations
 total_return, interest_earned = calculate_bond_returns(principal, tenure, yield_rate)
-usd_equivalent, full_lots, margin_required, hedging_cost, unhedged_amount = calculate_hedging(
-    principal, usdinr_rate, margin_per_lot, hedge_percentage, tenure, margin_interest_rate
+usd_equivalent, full_lots, margin_required, unhedged_amount = calculate_hedging(
+    principal, usdinr_rate, margin_per_lot, hedge_percentage
 )
-
-# Calculate actual returns after hedging costs
-return_without_hedging = total_return
-return_with_hedging = total_return - hedging_cost
-
-# Calculate annualized returns
-annualized_without = ((return_without_hedging / principal) ** (1/tenure) - 1) * 100
-annualized_with = ((return_with_hedging / principal) ** (1/tenure) - 1) * 100
 
 # Dashboard layout
 col1, col2 = st.columns(2)
@@ -144,27 +106,25 @@ with col1:
 with col2:
     st.header("Currency Hedging")
     
-    # USD Conversion Metrics
+    # Metrics
     st.markdown(f"""
     <div class="metric-box">
-        <h3>USD Equivalent (Full Conversion)</h3>
-        <h2>${principal/usdinr_rate:,.2f}</h2>
+        <h3>USD Equivalent</h3>
+        <h2>${usd_equivalent:,.2f} (at {usdinr_rate} USD/INR)</h2>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown(f"""
     <div class="metric-box">
-        <h3>Hedged Amount ({hedge_percentage}%)</h3>
-        <h2>${usd_equivalent:,.2f}</h2>
+        <h3>Hedging Required</h3>
+        <h2>{full_lots} lot{'s' if full_lots != 1 else ''} (${full_lots * 1000:,.0f} coverage)</h2>
     </div>
     """, unsafe_allow_html=True)
     
     st.markdown(f"""
     <div class="metric-box">
-        <h3>Hedging Details</h3>
-        <p>Lots Required: {full_lots} (${full_lots * 1000:,.0f})</p>
-        <p>Margin Required: ₹{margin_required:,.2f}</p>
-        <p>Total Hedging Cost: ₹{hedging_cost:,.2f}</p>
+        <h3>Margin Required</h3>
+        <h2>₹{margin_required:,.2f}</h2>
     </div>
     """, unsafe_allow_html=True)
     
@@ -179,87 +139,26 @@ with col2:
         ax2.axis('equal')
         ax2.set_title('Hedging Coverage')
         st.pyplot(fig2)
+    
+    # Explanation
+    with st.expander("How Hedging Works"):
+        st.write("""
+        - **Hedging protects** your USD investment against INR appreciation
+        - For each USD 1000 invested, you would take a **short position** in USD/INR futures
+        - If INR strengthens (USD/INR falls), your futures position will profit, offsetting bond losses
+        - The margin is the amount needed to maintain this hedge position
+        - You're currently hedging {:.0f}% of your USD exposure
+        """.format(hedge_percentage))
 
-# Return Comparison Section
+# Additional calculations
+annualized_return = ((total_return / principal) ** (1/tenure) - 1) * 100
+
+# Footer with additional metrics
 st.markdown("---")
-st.header("Return Comparison: With vs Without Hedging")
-
 col3, col4, col5 = st.columns(3)
 with col3:
-    st.metric("Total Return Without Hedging", f"₹{return_without_hedging:,.2f}", 
-              f"{(return_without_hedging/principal - 1)*100:.2f}%")
+    st.metric("Effective Annual Return", f"{annualized_return:.2f}%")
 with col4:
-    st.metric("Total Return With Hedging", f"₹{return_with_hedging:,.2f}", 
-              f"{(return_with_hedging/principal - 1)*100:.2f}%")
+    st.metric("Total Return", f"{(total_return/principal - 1)*100:.2f}%")
 with col5:
-    difference = return_without_hedging - return_with_hedging
-    st.metric("Hedging Cost Impact", f"₹{difference:,.2f}", 
-              f"-{(difference/principal)*100:.2f}%")
-
-# Detailed comparison table
-st.markdown(f"""
-<table class="comparison-table">
-    <tr>
-        <th>Metric</th>
-        <th>Without Hedging</th>
-        <th>With Hedging</th>
-        <th>Difference</th>
-    </tr>
-    <tr>
-        <td>Final Value (INR)</td>
-        <td>₹{return_without_hedging:,.2f}</td>
-        <td>₹{return_with_hedging:,.2f}</td>
-        <td>₹{(return_without_hedging - return_with_hedging):,.2f}</td>
-    </tr>
-    <tr>
-        <td>Total Return</td>
-        <td>{(return_without_hedging/principal - 1)*100:.2f}%</td>
-        <td>{(return_with_hedging/principal - 1)*100:.2f}%</td>
-        <td>{((return_without_hedging - return_with_hedging)/principal)*100:.2f}%</td>
-    </tr>
-    <tr>
-        <td>Annualized Return</td>
-        <td>{annualized_without:.2f}%</td>
-        <td>{annualized_with:.2f}%</td>
-        <td>{(annualized_without - annualized_with):.2f}%</td>
-    </tr>
-</table>
-""", unsafe_allow_html=True)
-
-# Explanation
-with st.expander("Understanding the Results"):
-    st.write(f"""
-    **Key Concepts:**
-    
-    1. **Without Hedging:**
-       - Your full investment grows at the bond yield rate
-       - You're exposed to USD/INR exchange rate fluctuations
-       - If INR appreciates, your USD investment will be worth less in INR terms
-    
-    2. **With Hedging:**
-       - You pay margin costs to protect against currency fluctuations
-       - Your net return is bond returns minus hedging costs
-       - Protects you if INR appreciates, but costs money if INR depreciates
-    
-    3. **Hedging Cost Components:**
-       - Margin requirement (₹{margin_required:,.0f} upfront)
-       - Margin interest cost (₹{hedging_cost:,.0f} over {tenure} years at {margin_interest_rate}%)
-    """)
-    
-    st.write("""
-    **When to Hedge:**
-    - When you want to lock in current exchange rates
-    - When you believe INR might appreciate significantly
-    - When currency stability is more important than maximizing returns
-    """)
-
-# Additional metrics
-st.markdown("---")
-st.subheader("Additional Metrics")
-col6, col7, col8 = st.columns(3)
-with col6:
-    st.metric("USD Equivalent (Full)", f"${principal/usdinr_rate:,.2f}")
-with col7:
     st.metric("Unhedged USD Amount", f"${max(0, unhedged_amount):,.2f}")
-with col8:
-    st.metric("Hedging Cost per Year", f"₹{hedging_cost/tenure:,.2f}")
