@@ -1,256 +1,265 @@
 import streamlit as st
-import math
-import plotly.express as px
-from datetime import datetime
-
-# Constants
-USDINR_RATE = 85
-USDINR_LOT_SIZE = 1000  # One lot = $1000
-MARGIN_PER_LOT = 2150  # INR per lot
-HISTORICAL_VOLATILITY = 8.5  # Annualized % volatility for USDINR
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Page configuration
-st.set_page_config(page_title="Advanced Bond Investment Dashboard", layout="wide")
+st.set_page_config(page_title="Bond Investment Dashboard", layout="wide")
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
 <style>
     .main {
-        background-color: #f8f9fa;
+        background-color: #f5f5f5;
     }
     .stNumberInput, .stSelectbox {
-        margin-bottom: 20px;
+        background-color: white;
     }
     .metric-box {
         background-color: white;
         border-radius: 10px;
-        padding: 20px;
+        padding: 15px;
         margin: 10px 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .header {
         color: #2c3e50;
     }
-    .highlight {
-        color: #3498db;
-        font-weight: bold;
-    }
-    .negative {
-        color: #e74c3c;
-    }
-    .positive {
-        color: #2ecc71;
-    }
-    .scenario-box {
-        border-left: 4px solid #3498db;
-        padding-left: 15px;
+    .comparison-table {
+        width: 100%;
+        border-collapse: collapse;
         margin: 15px 0;
+    }
+    .comparison-table th, .comparison-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .comparison-table tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+    .comparison-table th {
+        background-color: #3498db;
+        color: white;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Title and description
-st.title("💰 Advanced Bond Investment Dashboard")
-st.markdown("""
-Comprehensive analysis of bond investments with USDINR currency hedging and risk assessment.
-""")
+# Title
+st.title("📊 Bond Investment Dashboard with USD/INR Hedging")
 
-# Create columns for layout
-col1, col2 = st.columns([1, 1])
+# Sidebar for inputs
+with st.sidebar:
+    st.header("Investment Parameters")
+    
+    # Bond investment inputs
+    principal = st.number_input("Investment Amount (INR)", min_value=1000, value=500000, step=1000)
+    tenure = st.selectbox("Tenure (Years)", [1, 2, 3], index=2)
+    yield_rate = st.number_input("Annual Yield (%)", min_value=0.1, value=7.5, step=0.1)
+    
+    st.header("USD/INR Hedging Parameters")
+    usdinr_rate = st.number_input("Current USD/INR Rate", min_value=1.0, value=85.0, step=0.1)
+    hedge_percentage = st.slider("Hedge Percentage (%)", 0, 100, 100)
+    margin_per_lot = st.number_input("Margin per Lot (INR)", min_value=1000, value=2150, step=50)
+    margin_interest_rate = st.number_input("Annual Margin Interest Rate (%)", min_value=0.0, value=8.0, step=0.1)
+
+# Calculations
+def calculate_bond_returns(principal, tenure, yield_rate):
+    total_return = principal * (1 + (yield_rate/100))**tenure
+    interest_earned = total_return - principal
+    return total_return, interest_earned
+
+def calculate_hedging(principal, usdinr_rate, margin_per_lot, hedge_percentage, tenure, margin_interest_rate):
+    # USD conversion
+    usd_equivalent = (principal / usdinr_rate) * (hedge_percentage/100)
+    
+    # Hedging calculations
+    lots_needed = usd_equivalent / 1000  # Each lot = USD 1000
+    full_lots = int(lots_needed)
+    total_margin = full_lots * margin_per_lot
+    
+    # Calculate margin interest cost (simple interest)
+    margin_interest_cost = total_margin * (margin_interest_rate/100) * tenure
+    
+    # Total hedging cost
+    total_hedging_cost = margin_interest_cost
+    
+    unhedged_amount = (principal / usdinr_rate) - (full_lots * 1000)
+    
+    return usd_equivalent, full_lots, total_margin, total_hedging_cost, unhedged_amount
+
+# Main calculations
+total_return, interest_earned = calculate_bond_returns(principal, tenure, yield_rate)
+usd_equivalent, full_lots, margin_required, hedging_cost, unhedged_amount = calculate_hedging(
+    principal, usdinr_rate, margin_per_lot, hedge_percentage, tenure, margin_interest_rate
+)
+
+# Calculate actual returns after hedging costs
+return_without_hedging = total_return
+return_with_hedging = total_return - hedging_cost
+
+# Calculate annualized returns
+annualized_without = ((return_without_hedging / principal) ** (1/tenure) - 1) * 100
+annualized_with = ((return_with_hedging / principal) ** (1/tenure) - 1) * 100
+
+# Dashboard layout
+col1, col2 = st.columns(2)
 
 with col1:
-    st.header("📊 Investment Parameters")
-    with st.container():
-        investment_inr = st.number_input("**Investment Amount (INR)**", min_value=1000, step=1000, value=1000000)
-        tenure_years = st.selectbox("**Tenure (Years)**", [1, 2, 3, 4, 5], index=2)
-        yield_percent = st.number_input("**Annual Yield (%)**", min_value=0.0, step=0.1, value=6.5)
+    st.header("Investment Returns")
+    
+    # Metrics
+    st.markdown(f"""
+    <div class="metric-box">
+        <h3>Principal Amount</h3>
+        <h2>₹{principal:,.2f}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="metric-box">
+        <h3>Maturity Value ({tenure} year{'s' if tenure > 1 else ''})</h3>
+        <h2>₹{total_return:,.2f}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="metric-box">
+        <h3>Interest Earned</h3>
+        <h2>₹{interest_earned:,.2f}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Growth chart
+    years = list(range(tenure + 1))
+    values = [principal * (1 + (yield_rate/100))**year for year in years]
+    
+    fig1, ax1 = plt.subplots()
+    ax1.plot(years, values, marker='o', color='#3498db')
+    ax1.set_title('Investment Growth Over Time')
+    ax1.set_xlabel('Years')
+    ax1.set_ylabel('Value (INR)')
+    ax1.grid(True)
+    st.pyplot(fig1)
 
 with col2:
-    st.header("⚙️ Hedging Parameters")
-    with st.container():
-        st.markdown(f"**Current USD/INR Rate:** {USDINR_RATE}")
-        st.markdown(f"**USDINR Lot Size:** ${USDINR_LOT_SIZE}")
-        st.markdown(f"**Margin Requirement per Lot:** ₹{MARGIN_PER_LOT}")
-        forex_change_pct = st.slider("**Forex Scenario (% USD/INR change)**", -20.0, 20.0, 0.0, 0.5)
+    st.header("Currency Hedging")
+    
+    # USD Conversion Metrics
+    st.markdown(f"""
+    <div class="metric-box">
+        <h3>USD Equivalent (Full Conversion)</h3>
+        <h2>${principal/usdinr_rate:,.2f}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="metric-box">
+        <h3>Hedged Amount ({hedge_percentage}%)</h3>
+        <h2>${usd_equivalent:,.2f}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"""
+    <div class="metric-box">
+        <h3>Hedging Details</h3>
+        <p>Lots Required: {full_lots} (${full_lots * 1000:,.0f})</p>
+        <p>Margin Required: ₹{margin_required:,.2f}</p>
+        <p>Total Hedging Cost: ₹{hedging_cost:,.2f}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Pie chart for hedging coverage
+    if usd_equivalent > 0:
+        labels = ['Hedged Amount', 'Unhedged Amount']
+        sizes = [full_lots * 1000, max(0, unhedged_amount)]
+        colors = ['#2ecc71', '#e74c3c']
+        
+        fig2, ax2 = plt.subplots()
+        ax2.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+        ax2.axis('equal')
+        ax2.set_title('Hedging Coverage')
+        st.pyplot(fig2)
 
-# Calculate returns
-interest_earned = investment_inr * (yield_percent / 100) * tenure_years
-total_return_inr = investment_inr + interest_earned
-
-# USD Conversion
-investment_usd = investment_inr / USDINR_RATE
-
-# Hedging Calculations
-num_lots = math.ceil(investment_usd / USDINR_LOT_SIZE)
-total_margin_inr = num_lots * MARGIN_PER_LOT
-actual_return_with_hedging = total_return_inr - total_margin_inr
-
-# Return Percentages
-return_pct_without_hedging = ((total_return_inr - investment_inr) / investment_inr) * 100
-return_pct_with_hedging = ((actual_return_with_hedging - investment_inr) / investment_inr) * 100
-hedging_cost_pct = (total_margin_inr / investment_inr) * 100
-
-# --------------------------
-# 1. Forex Risk Analysis
-# --------------------------
+# Return Comparison Section
 st.markdown("---")
-st.header("🌍 Forex Risk Analysis")
+st.header("Return Comparison: With vs Without Hedging")
 
-scenario_rate = USDINR_RATE * (1 + forex_change_pct/100)
-unhedged_scenario_return = (investment_usd * scenario_rate) + interest_earned
-forex_impact = unhedged_scenario_return - total_return_inr
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("Unhedged Scenario Return", f"₹{unhedged_scenario_return:,.2f}", 
-              f"{(unhedged_scenario_return/investment_inr-1)*100:.2f}%")
-
-with col2:
-    st.metric("Forex Impact", f"₹{forex_impact:,.2f}", 
-              f"{(forex_impact/investment_inr)*100:.2f}%")
-
+col3, col4, col5 = st.columns(3)
 with col3:
-    st.metric("Hedged Scenario Return", f"₹{actual_return_with_hedging:,.2f}", 
-              f"{return_pct_with_hedging:.2f}%")
+    st.metric("Total Return Without Hedging", f"₹{return_without_hedging:,.2f}", 
+              f"{(return_without_hedging/principal - 1)*100:.2f}%")
+with col4:
+    st.metric("Total Return With Hedging", f"₹{return_with_hedging:,.2f}", 
+              f"{(return_with_hedging/principal - 1)*100:.2f}%")
+with col5:
+    difference = return_without_hedging - return_with_hedging
+    st.metric("Hedging Cost Impact", f"₹{difference:,.2f}", 
+              f"-{(difference/principal)*100:.2f}%")
 
-# Historical volatility analysis
-st.subheader("Historical Volatility Analysis")
+# Detailed comparison table
 st.markdown(f"""
-- **1-year historical volatility:** {HISTORICAL_VOLATILITY}%
-- **Probable range after {tenure_years} year(s): ±{HISTORICAL_VOLATILITY*math.sqrt(tenure_years):.1f}%
-- **95% confidence range:** {USDINR_RATE*(1-HISTORICAL_VOLATILITY/100*math.sqrt(tenure_years)*1.96):.2f} to {USDINR_RATE*(1+HISTORICAL_VOLATILITY/100*math.sqrt(tenure_years)*1.96):.2f}
-""")
-
-# --------------------------
-# 2. Comparative Analysis
-# --------------------------
-st.markdown("---")
-st.header("📊 Comparative Analysis")
-
-alt_returns = {
-    "Strategy": ["Unhedged Bonds", "Hedged Bonds", "Fixed Deposit", "Nifty 50", "Gold"],
-    "Return (%)": [return_pct_without_hedging, return_pct_with_hedging, 6.5, 12.0, 9.2],
-    "Risk": ["High", "Medium", "Low", "High", "Medium"]
-}
-
-fig = px.bar(alt_returns, x="Strategy", y="Return (%)", color="Risk",
-             title="Comparative Returns Across Strategies",
-             color_discrete_map={"High": "#e74c3c", "Medium": "#f39c12", "Low": "#2ecc71"})
-st.plotly_chart(fig, use_container_width=True)
-
-# --------------------------
-# 3. Time Value of Money
-# --------------------------
-st.markdown("---")
-st.header("⏳ Time Value of Money")
-
-inflation_rate = st.slider("Expected inflation rate (%)", 2.0, 10.0, 6.0, 0.1)
-real_return_hedged = ((1 + return_pct_with_hedging/100) / (1 + inflation_rate/100) - 1) * 100
-real_return_unhedged = ((1 + return_pct_without_hedging/100) / (1 + inflation_rate/100) - 1) * 100
-
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Nominal Return (Hedged)", f"{return_pct_with_hedging:.2f}%")
-    st.metric("Real Return (Hedged)", f"{real_return_hedged:.2f}%", 
-              delta_color="inverse" if real_return_hedged < 0 else "normal")
-
-with col2:
-    st.metric("Nominal Return (Unhedged)", f"{return_pct_without_hedging:.2f}%")
-    st.metric("Real Return (Unhedged)", f"{real_return_unhedged:.2f}%", 
-              delta_color="inverse" if real_return_unhedged < 0 else "normal")
-
-# --------------------------
-# 4. Risk Metrics
-# --------------------------
-st.markdown("---")
-st.header("⚠️ Risk Metrics")
-
-historical_max_drop = -15.7  # Worst 1-year USD/INR change
-stress_return = (investment_usd * USDINR_RATE * (1 + historical_max_drop/100)) + interest_earned
-var_95 = investment_inr * (return_pct_without_hedging/100 - 1.96*HISTORICAL_VOLATILITY/100)
-
-st.markdown(f"""
-- **Value at Risk (95% confidence):** ₹{max(0, var_investment):,.2f}
-- **Stress Scenario Return (2008-like):** ₹{stress_return:,.2f} ({(stress_return/investment_inr-1)*100:.2f}%)
-- **Sharpe Ratio (vs risk-free):** {(return_pct_with_hedging/100 - 0.065)/ (HISTORICAL_VOLATILITY/100):.2f}
-""")
-
-# --------------------------
-# 5. Advanced Hedging Analytics
-# --------------------------
-st.markdown("---")
-st.header("📈 Advanced Hedging Analytics")
-
-hedge_efficiency = min(1, (num_lots * USDINR_LOT_SIZE) / investment_usd) * 100
-optimal_lots = math.floor(investment_usd / USDINR_LOT_SIZE)
-optimal_hedge_return = total_return_inr - (optimal_lots * MARGIN_PER_LOT)
-
-st.markdown(f"""
-- **Hedge Efficiency:** {hedge_efficiency:.1f}% of exposure covered
-- **Optimal Lot Strategy:** {optimal_lots} lots (covers ${optimal_lots * USDINR_LOT_SIZE:,.0f})
-- **Optimal Hedge Return:** ₹{optimal_hedge_return:,.2f} ({(optimal_hedge_return/investment_inr-1)*100:.2f}%)
-""")
-
-# --------------------------
-# 6. Visualization Enhancements
-# --------------------------
-st.markdown("---")
-st.header("📊 Scenario Analysis Visualizations")
-
-# Create scenario data
-scenarios = {
-    "Scenario": ["Worst Case (-15%)", "Bear Case (-7.5%)", "Neutral (0%)", 
-                 "Bull Case (+7.5%)", "Best Case (+15%)"],
-    "USD/INR Rate": [USDINR_RATE*0.85, USDINR_RATE*0.925, USDINR_RATE, 
-                     USDINR_RATE*1.075, USDINR_RATE*1.15],
-    "Unhedged Return": [
-        (investment_usd * USDINR_RATE*0.85 + interest_earned)/investment_inr*100-100,
-        (investment_usd * USDINR_RATE*0.925 + interest_earned)/investment_inr*100-100,
-        return_pct_without_hedging,
-        (investment_usd * USDINR_RATE*1.075 + interest_earned)/investment_inr*100-100,
-        (investment_usd * USDINR_RATE*1.15 + interest_earned)/investment_inr*100-100
-    ],
-    "Hedged Return": [return_pct_with_hedging]*5
-}
-
-fig = px.line(scenarios, x="Scenario", y=["Unhedged Return", "Hedged Return"],
-              title="Return Scenarios Under Different Forex Conditions",
-              labels={"value": "Return (%)", "variable": "Strategy"},
-              markers=True)
-st.plotly_chart(fig, use_container_width=True)
-
-# Waterfall chart
-waterfall_data = {
-    "Measure": ["Initial Investment", "Interest Earned", "Forex Impact", "Hedging Cost", "Final Value"],
-    "Value": [investment_inr, interest_earned, forex_impact, -total_margin_inr, actual_return_with_hedging]
-}
-
-fig = px.waterfall(waterfall_data, x="Measure", y="Value", 
-                   title="Investment Value Waterfall")
-st.plotly_chart(fig, use_container_width=True)
-
-# --------------------------
-# Main Results Display
-# --------------------------
-st.markdown("---")
-st.header("📌 Summary Results")
-
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Total Return Without Hedging", 
-              f"₹{total_return_inr:,.2f}", 
-              f"{return_pct_without_hedging:.2f}%")
-
-with col2:
-    st.metric("Total Return With Hedging", 
-              f"₹{actual_return_with_hedging:,.2f}", 
-              f"{return_pct_with_hedging:.2f}%")
-
-# Footer
-st.markdown("---")
-st.markdown(f"""
-<div style="text-align: center; color: #7f8c8d; font-size: 0.8em;">
-    <p>Dashboard last updated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-    <p>Note: This is for analytical purposes only. Consult a financial advisor before making investment decisions.</p>
-</div>
+<table class="comparison-table">
+    <tr>
+        <th>Metric</th>
+        <th>Without Hedging</th>
+        <th>With Hedging</th>
+        <th>Difference</th>
+    </tr>
+    <tr>
+        <td>Final Value (INR)</td>
+        <td>₹{return_without_hedging:,.2f}</td>
+        <td>₹{return_with_hedging:,.2f}</td>
+        <td>₹{(return_without_hedging - return_with_hedging):,.2f}</td>
+    </tr>
+    <tr>
+        <td>Total Return</td>
+        <td>{(return_without_hedging/principal - 1)*100:.2f}%</td>
+        <td>{(return_with_hedging/principal - 1)*100:.2f}%</td>
+        <td>{((return_without_hedging - return_with_hedging)/principal)*100:.2f}%</td>
+    </tr>
+    <tr>
+        <td>Annualized Return</td>
+        <td>{annualized_without:.2f}%</td>
+        <td>{annualized_with:.2f}%</td>
+        <td>{(annualized_without - annualized_with):.2f}%</td>
+    </tr>
+</table>
 """, unsafe_allow_html=True)
+
+# Explanation
+with st.expander("Understanding the Results"):
+    st.write(f"""
+    **Key Concepts:**
+    
+    1. **Without Hedging:**
+       - Your full investment grows at the bond yield rate
+       - You're exposed to USD/INR exchange rate fluctuations
+       - If INR appreciates, your USD investment will be worth less in INR terms
+    
+    2. **With Hedging:**
+       - You pay margin costs to protect against currency fluctuations
+       - Your net return is bond returns minus hedging costs
+       - Protects you if INR appreciates, but costs money if INR depreciates
+    
+    3. **Hedging Cost Components:**
+       - Margin requirement (₹{margin_required:,.0f} upfront)
+       - Margin interest cost (₹{hedging_cost:,.0f} over {tenure} years at {margin_interest_rate}%)
+    """)
+    
+    st.write("""
+    **When to Hedge:**
+    - When you want to lock in current exchange rates
+    - When you believe INR might appreciate significantly
+    - When currency stability is more important than maximizing returns
+    """)
+
+# Additional metrics
+st.markdown("---")
+st.subheader("Additional Metrics")
+col6, col7, col8 = st.columns(3)
+with col6:
+    st.metric("USD Equivalent (Full)", f"${principal/usdinr_rate:,.2f}")
+with col7:
+    st.metric("Unhedged USD Amount", f"${max(0, unhedged_amount):,.2f}")
+with col8:
+    st.metric("Hedging Cost per Year", f"₹{hedging_cost/tenure:,.2f}")
